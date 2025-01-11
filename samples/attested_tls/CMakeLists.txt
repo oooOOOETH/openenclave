@@ -21,12 +21,12 @@ set(CMAKE_CXX_STANDARD 11)
 # set OE_CRYPTO_LIB to either "mbedtls" or "openssl" based on the crypto wrapper to be used.
 # OE_CRYPTO_LIB is case sensitive. Use all lowercase letters.
 set(OE_CRYPTO_LIB
-    mbedtls
+    openssl_3
     CACHE STRING "Crypto library used by enclaves.")
 
 find_package(OpenEnclave CONFIG REQUIRED)
 
-if (OE_CRYPTO_LIB STREQUAL "openssl_symcrypt_fips")
+if (OE_CRYPTO_LIB MATCHES ".*symcrypt.*")
   # Download the SymCrypt release package at config-time
   include(FetchContent)
   FetchContent_Declare(
