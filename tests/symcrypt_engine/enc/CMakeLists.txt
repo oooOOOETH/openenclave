@@ -4,10 +4,6 @@
 set(EDL_FILE ../symcrypt_engine.edl)
 set(NO_ENTROPY_EDL_FILE ../symcrypt_engine_no_entropy.edl)
 
-add_enclave_library(symcrypt_engine_test STATIC symcrypt_engine_test.c)
-enclave_link_libraries(symcrypt_engine_test oe_includes)
-maybe_build_using_clangw(symcrypt_engine_test)
-
 # Invoke oeedger8r to generate edge routines (*_t.c, *_t.h, and *_args.h)
 add_custom_command(
   OUTPUT symcrypt_engine_t.h symcrypt_engine_t.c
@@ -30,7 +26,7 @@ add_enclave(
   CRYPTO_LIB
   # Specify an unsupported option so that we can exercise the link-time
   # symbol replacement
-  None
+  "SymCrypt_FIPS"
   SOURCES
   enc.c
   ${CMAKE_CURRENT_BINARY_DIR}/symcrypt_engine_t.c)
@@ -41,17 +37,27 @@ add_enclave(
   CRYPTO_LIB
   # Specify an unsupported option so that we can exercise the link-time
   # symbol replacement
-  None
+  "SymCrypt_FIPS"
   SOURCES
   enc.c
   ${CMAKE_CURRENT_BINARY_DIR}/symcrypt_engine_no_entropy_t.c)
 
-enclave_compile_definitions(sgx_symcrypt_engine_enc PRIVATE USE_ENTROPY_EDL)
+if (ENABLE_SYMCRYPT_OPENSSL_TESTS)
+  add_custom_command(
+    TARGET sgx_symcrypt_engine_enc
+    COMMAND
+      ${CMAKE_COMMAND} -E copy
+      ${CMAKE_BINARY_DIR}/3rdparty/symcrypt_engine/SymCrypt/lib/${SYMCRYPT_NAME}
+      ${CMAKE_CURRENT_BINARY_DIR}/${SYMCRYPT_LINK_NAME})
+  add_custom_command(
+    TARGET sgx_symcrypt_engine_no_entropy_enc
+    COMMAND
+      ${CMAKE_COMMAND} -E copy
+      ${CMAKE_BINARY_DIR}/3rdparty/symcrypt_engine/SymCrypt/lib/${SYMCRYPT_NAME}
+      ${CMAKE_CURRENT_BINARY_DIR}/${SYMCRYPT_LINK_NAME})
+endif ()
 
-enclave_link_libraries(sgx_symcrypt_engine_enc symcrypt_engine_test
-                       oecryptoopenssl)
-enclave_link_libraries(sgx_symcrypt_engine_no_entropy_enc symcrypt_engine_test
-                       oecryptoopenssl)
+enclave_compile_definitions(sgx_symcrypt_engine_enc PRIVATE USE_ENTROPY_EDL)
 
 # Add include paths
 enclave_include_directories(sgx_symcrypt_engine_enc PRIVATE

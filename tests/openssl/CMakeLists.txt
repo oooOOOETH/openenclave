@@ -182,6 +182,9 @@ copy_test_data(${OPENSSL_DIR}/test/ct/tls1.sct
 # Add a custom target that ensures the test files are copied at build time.
 add_custom_target(openssl_test_data ALL DEPENDS ${test_data_list})
 
+file(STRINGS "tests.unsupported.symcrypt" UNSUPPORTED_SYMCRYPT_TESTS)
+file(STRINGS "tests_3.unsupported.symcrypt" UNSUPPORTED_SYMCRYPT_TESTS_3)
+
 # Add buildtests.
 file(STRINGS "tests.supported.buildtest" buildtests)
 foreach (testcase ${buildtests})
@@ -201,16 +204,24 @@ foreach (testcase ${buildtests_3})
   get_testcase_name(${testcase} name "../../3rdparty/openssl/openssl_3/test/")
   add_enclave_test(tests/openssl/3-${name} openssl_host openssl-3-${name}_enc
                    ${name})
-  # OpenSSL_3 does not support symcrypt yet.
+  if ((NOT "${name}" IN_LIST UNSUPPORTED_SYMCRYPT_TESTS_3)
+      AND (ENABLE_SYMCRYPT_OPENSSL_TESTS))
+    add_enclave_test(tests/openssl/3-${name}_symcrypt openssl_host
+                     openssl-3-${name}_symcrypt_enc ${name})
+  endif ()
 endforeach (testcase)
-
-file(STRINGS "tests.unsupported.symcrypt" UNSUPPORTED_SYMCRYPT_TESTS)
 
 # Helper for adding tests with arguments.
 macro (add_openssl_test OPENSSL3 TEST_NAME NAME)
   if (OPENSSL3)
     add_enclave_test(tests/openssl/3-${TEST_NAME} openssl_host
                      openssl-3-${NAME}_enc ${TEST_NAME} ${ARGN})
+
+    if ((NOT "${TEST_NAME}" IN_LIST UNSUPPORTED_SYMCRYPT_TESTS_3)
+        AND (ENABLE_SYMCRYPT_OPENSSL_TESTS))
+      add_enclave_test(tests/openssl/3-${TEST_NAME}_symcrypt openssl_host
+                       openssl-3-${NAME}_symcrypt_enc ${TEST_NAME} ${ARGN})
+    endif ()
   else ()
     add_enclave_test(tests/openssl/${TEST_NAME} openssl_host
                      openssl-${NAME}_enc ${TEST_NAME} ${ARGN})
@@ -227,6 +238,11 @@ endmacro (add_openssl_test)
 macro (add_openssl_tests_properties OPENSSL3 TEST_NAME)
   if (OPENSSL3)
     set_enclave_tests_properties(tests/openssl/3-${TEST_NAME} ${ARGN})
+    if ((NOT "${TEST_NAME}" IN_LIST UNSUPPORTED_SYMCRYPT_TESTS_3)
+        AND (ENABLE_SYMCRYPT_OPENSSL_TESTS))
+      set_enclave_tests_properties(tests/openssl/3-${TEST_NAME}_symcrypt
+                                   ${ARGN})
+    endif ()
   else ()
     set_enclave_tests_properties(tests/openssl/${TEST_NAME} ${ARGN})
     if ((NOT "${TEST_NAME}" IN_LIST UNSUPPORTED_SYMCRYPT_TESTS)
@@ -593,13 +609,6 @@ function (add_openssl_test_supported NAME OPENSSL3)
   if ("${name}" STREQUAL pem_read_depr_test)
     add_openssl_test(OPENSSL3 "${name}" "${name}"
                      ${OPENSSL_RECIPE_DIR}/04-test_pem_read_depr_data)
-    return()
-  endif ()
-
-  if ("${name}" STREQUAL prov_config_test)
-    add_openssl_test(
-      OPENSSL3 "${name}" "${name}" ${OPENSSL_TEST_DIR}/default.cnf
-      ${OPENSSL_TEST_DIR}/recursive.cnf)
     return()
   endif ()
 
