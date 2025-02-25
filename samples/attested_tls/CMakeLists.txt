@@ -21,20 +21,20 @@ set(CMAKE_CXX_STANDARD 11)
 # set OE_CRYPTO_LIB to either "mbedtls" or "openssl" based on the crypto wrapper to be used.
 # OE_CRYPTO_LIB is case sensitive. Use all lowercase letters.
 set(OE_CRYPTO_LIB
-    mbedtls
+    openssl_3
     CACHE STRING "Crypto library used by enclaves.")
 
 find_package(OpenEnclave CONFIG REQUIRED)
 
-if (OE_CRYPTO_LIB STREQUAL "openssl_symcrypt_fips")
+if (OE_CRYPTO_LIB MATCHES ".*symcrypt.*")
   # Download the SymCrypt release package at config-time
   include(FetchContent)
   FetchContent_Declare(
     symcrypt_pkg
     SOURCE_DIR ${CMAKE_BINARY_DIR}/SymCrypt
-    URL https://github.com/microsoft/SymCrypt/releases/download/v103.4.2/symcrypt-linux-oe_full-amd64-release-103.4.2-171f697.tar.gz
+    URL https://github.com/microsoft/SymCrypt/releases/download/v103.8.0/symcrypt-linux-oe_full-amd64-release-103.8.0-53be637.tar.gz
     URL_HASH
-      SHA256=AA562EC53CFBA400A2A27027F480BC81DD9C530A5DCA32CC5C6834ED191D03FD)
+      SHA256=0D5F279A00A15953A9D6DB8B78BBD07AAD169EA93BBEA729ECDA134889943A03)
 
   # Make the downloaded package globally available
   FetchContent_GetProperties(symcrypt_pkg)
@@ -43,7 +43,7 @@ if (OE_CRYPTO_LIB STREQUAL "openssl_symcrypt_fips")
   endif ()
 
   # The linker can only resolve up to single number after .so
-  configure_file(${CMAKE_BINARY_DIR}/SymCrypt/lib/libsymcrypt.so.103.4.2
+  configure_file(${CMAKE_BINARY_DIR}/SymCrypt/lib/libsymcrypt.so.103.8.0
                  ${CMAKE_BINARY_DIR}/libsymcrypt.so.103 COPYONLY)
 
   # Option passed in oeedger8r to include entropy.edl (required by

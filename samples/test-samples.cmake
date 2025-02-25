@@ -38,21 +38,38 @@ else ()
   )
 endif ()
 
+set(IS_JAMMY FALSE)
+
+if (UNIX)
+  set(OS_INFO "")
+  file(READ "/etc/os-release" OS_INFO)
+  if (OS_INFO STREQUAL "")
+    message(FATAL_ERROR "Failed to read /etc/os-release")
+  endif ()
+  set(STRPOS -1)
+  string(FIND "${OS_INFO}" "UBUNTU_CODENAME=jammy" STRPOS)
+  if (NOT STRPOS EQUAL -1)
+    set(IS_JAMMY TRUE)
+  endif ()
+endif ()
+
 # Set SAMPLES_LIST so that helloworld becomes the first if BUILD_ENCLAVES=ON.
 if (BUILD_ENCLAVES)
   set(SAMPLES_LIST debugmalloc file-encryptor helloworld log_callback
                    switchless)
-  set(CRYPTO_LIB_LIST mbedtls mbedtls mbedtls mbedtls mbedtls)
+  set(CRYPTO_LIB_LIST openssl_3 openssl_3 openssl_3 openssl_3 openssl_3)
   # Debug malloc will set allocated memory to a fixed pattern.
   # Hence do not enable pluggable_allocator test under USE_DEBUG_MALLOC.
   if (COMPILER_SUPPORTS_SNMALLOC AND NOT USE_DEBUG_MALLOC)
     list(APPEND SAMPLES_LIST pluggable_allocator)
-    list(APPEND CRYPTO_LIB_LIST mbedtls)
+    list(APPEND CRYPTO_LIB_LIST openssl_3)
   endif ()
 
-  if (UNIX)
+  # Alpine Linux, which oeapkman relies on, no longer installs properly
+  # (sqlite3 header files missing)
+  if (UNIX AND NOT IS_JAMMY)
     list(APPEND SAMPLES_LIST apkman)
-    list(APPEND CRYPTO_LIB_LIST mbedtls)
+    list(APPEND CRYPTO_LIB_LIST openssl_3)
   endif ()
 endif ()
 
@@ -71,7 +88,7 @@ else ()
   # that cause they directly interface with the AESM service.
   if (BUILD_ENCLAVES)
     list(APPEND SAMPLES_LIST data-sealing)
-    list(APPEND CRYPTO_LIB_LIST mbedtls)
+    list(APPEND CRYPTO_LIB_LIST openssl_3)
 
     # These tests can only run with SGX-FLC, meaning they were built
     # against SGX.
@@ -85,17 +102,15 @@ else ()
         attested_tls
         attestation
         file-encryptor
-        file-encryptor
         file-encryptor)
       list(
         APPEND
         CRYPTO_LIB_LIST
-        mbedtls
         openssl
         openssl_symcrypt_fips
         openssl_3
-        mbedtls
-        mbedtls
+        openssl_3_symcrypt_prov_fips
+        openssl_3
         openssl
         openssl_3)
     endif ()
@@ -144,13 +159,17 @@ foreach (i RANGE ${len})
     set(CMAKE_CRYPTO_LIB_DEFINE "-DOE_CRYPTO_LIB=openssl")
     set(MAKE_CRYPTO_LIB_DEFINE "OE_CRYPTO_LIB=openssl")
   elseif (CRYPTO_LIB STREQUAL "openssl_symcrypt_fips")
-    set(SAMPLE_BUILD_DIR "${SAMPLE_BUILD_DIR}_symcrypt_fips")
+    set(SAMPLE_BUILD_DIR "${SAMPLE_BUILD_DIR}_openssl_symcrypt_fips")
     set(CMAKE_CRYPTO_LIB_DEFINE "-DOE_CRYPTO_LIB=openssl_symcrypt_fips")
     set(MAKE_CRYPTO_LIB_DEFINE "OE_CRYPTO_LIB=openssl_symcrypt_fips")
   elseif (CRYPTO_LIB STREQUAL "openssl_3")
     set(SAMPLE_BUILD_DIR "${SAMPLE_BUILD_DIR}_openssl_3")
     set(CMAKE_CRYPTO_LIB_DEFINE "-DOE_CRYPTO_LIB=openssl_3")
     set(MAKE_CRYPTO_LIB_DEFINE "OE_CRYPTO_LIB=openssl_3")
+  elseif (CRYPTO_LIB STREQUAL "openssl_3_symcrypt_prov_fips")
+    set(SAMPLE_BUILD_DIR "${SAMPLE_BUILD_DIR}_openssl_3_symcrypt_prov_fips")
+    set(CMAKE_CRYPTO_LIB_DEFINE "-DOE_CRYPTO_LIB=openssl_3_symcrypt_prov_fips")
+    set(MAKE_CRYPTO_LIB_DEFINE "OE_CRYPTO_LIB=openssl_3_symcrypt_prov_fips")
   endif ()
 
   execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory
